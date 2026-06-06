@@ -12,12 +12,12 @@
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
 // misc lib
-#include "i2c_dev.h"
-#include "util.h" // mem_name
+#include "misc/i2c_dev.h"
+#include "misc/util.h" // mem_name
 // oled lib
-#include "chicago_12.h"
-#include "font.h"
-#include "oled.h"
+#include "oled/chicago_12.h"
+#include "oled/font.h"
+#include "oled/oled.h"
 
 constexpr uint8_t i2c_addr = 0x3c; // SSD1306: 0x3c or 0x3d
 static i2c_inst_t *i2c_dev = i2c1; // RP2040/RP2350: i2c0 or i2c1

@@ -5,9 +5,9 @@
 // pico sdk
 #include "pico/stdlib.h"
 // misc lib
-#include "i2c_dev.h"
+#include "misc/i2c_dev.h"
 // oled lib
-#include "font.h"
+#include "oled/font.h"
 
 
 class Oled

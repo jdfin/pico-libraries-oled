@@ -6,9 +6,9 @@
 // pico
 #include "pico/stdlib.h"
 // misc
-#include "i2c_dev.h"
+#include "misc/i2c_dev.h"
 //
-#include "oled.h"
+#include "oled/oled.h"
 
 
 // ~800 usec at 400 KHz
