@@ -20,10 +20,10 @@
 #include "oled/oled.h"
 
 constexpr uint8_t i2c_addr = 0x3c; // SSD1306: 0x3c or 0x3d
-static i2c_inst_t *i2c_dev = i2c1; // RP2040/RP2350: i2c0 or i2c1
+static i2c_inst_t *i2c_dev = i2c0; // RP2040/RP2350: i2c0 or i2c1
 
-static constexpr int sda_gpio = 14;
-static constexpr int scl_gpio = 15;
+static constexpr int sda_gpio = 16;
+static constexpr int scl_gpio = 17;
 
 // easily comment out some of the demo functions
 #pragma GCC diagnostic push
@@ -33,8 +33,10 @@ static void do_hello(Oled &oled);
 static void do_fullscreen(Oled &oled);
 static void do_dots(Oled &oled);
 static void do_stripes(Oled &oled);
-static void do_chars1(Oled &oled);
-static void do_chars2(Oled &oled);
+static void do_chars1a(Oled &oled);
+static void do_chars1b(Oled &oled);
+static void do_chars2a(Oled &oled);
+static void do_chars2b(Oled &oled);
 
 static const Font *font = &chicago_12;
 
@@ -46,8 +48,10 @@ static struct {
     {"fullscreen", do_fullscreen}, //
     {"dots", do_dots},             //
     {"stripes", do_stripes},       //
-    {"chars1", do_chars1},         //
-    {"chars2", do_chars2},
+    {"chars1a", do_chars1a},       //
+    {"chars1b", do_chars1b},       //
+    {"chars2a", do_chars2a},       //
+    {"chars2b", do_chars2b},       //
 };
 static constexpr int demo_max = sizeof(demo) / sizeof(demo[0]);
 
@@ -244,44 +248,79 @@ static void do_stripes(Oled &oled)
 // 0x70 pqrstuvwxyz{|}~
 
 
-static void do_chars1(Oled &oled)
+static void do_chars1a(Oled &oled)
 {
     // Draw characters in font:
     //
     // +---------------------+
+    // |                     |
     // |    ABCDEFGHIJKLM    |
     // |    NOPQRSTUVWXYZ    |
-    // |    abcdefghijklm    |
-    // |    nopqrstuvwxyz    |
+    // |                     |
     // +---------------------+
 
     oled.set_font(font);
     oled.set_align(Oled::HAlign::Center, Oled::VAlign::Center);
     oled.puts(Oled::cols / 2, Oled::rows / 2,
               "ABCDEFGHIJKLM\n"
-              "NOPQRSTUVWXYZ\n"
+              "NOPQRSTUVWXYZ");
+}
+
+
+static void do_chars1b(Oled &oled)
+{
+    // Draw characters in font:
+    //
+    // +---------------------+
+    // |                     |
+    // |    abcdefghijklm    |
+    // |    nopqrstuvwxyz    |
+    // |                     |
+    // +---------------------+
+
+    oled.set_font(font);
+    oled.set_align(Oled::HAlign::Center, Oled::VAlign::Center);
+    oled.puts(Oled::cols / 2, Oled::rows / 2,
               "abcdefghijklm\n"
               "nopqrstuvwxyz");
 }
 
 
-static void do_chars2(Oled &oled)
+static void do_chars2a(Oled &oled)
 {
     // Draw characters in font:
     //
     // +--------------------+
-    // |     0123456789     |
+    // |                    |
     // |  !"#$%&'()*+,-./:  |
     // |  ;<=>?@[\]^_`{|}~  |
-    // |     <special>      |
+    // |                    |
     // +--------------------+
 
-    char msg[128];
+    oled.set_font(font);
+    oled.set_align(Oled::HAlign::Center, Oled::VAlign::Center);
+    oled.puts(Oled::cols / 2, Oled::rows / 2,
+              "!\"#$%&'()*+,-./:\n"
+              ";<=>?@[\\]^_`{|}~");
+}
+
+
+static void do_chars2b(Oled &oled)
+{
+    // Draw characters in font:
+    //
+    // +--------------------+
+    // |                    |
+    // |     0123456789     |
+    // |     <special>      |
+    // |                    |
+    // +--------------------+
+
+    char msg[32];
+    char *msg_eos = msg + sizeof(msg) - 1; // must always be '\0' here
     memset(msg, '\0', sizeof(msg));
     strcpy(msg,
-           "0123456789\n"
-           "!\"#$%&'()*+,-./:\n"
-           ";<=>?@[\\]^_`{|}~\n");
+           "0123456789\n");
     char *msg_end;
     for (msg_end = msg; *msg_end != '\0'; msg_end++)
         ;
@@ -297,6 +336,8 @@ static void do_chars2(Oled &oled)
                 break;
             }
         }
+        if (msg_end >= msg_eos)
+            break;
     }
 
     oled.set_font(font);

@@ -37,13 +37,17 @@ public:
     // ~75 usec at 400 KHz
     void on()
     {
-        write_cmd(0xaf);
+        constexpr uint8_t ctrl = 0x00;
+        uint8_t buf[] = { ctrl, 0xaf };
+        write_cmds(buf, sizeof(buf));
     }
 
     // ~75 usec at 400 KHz
     void off()
     {
-        write_cmd(0xae);
+        constexpr uint8_t ctrl = 0x00;
+        uint8_t buf[] = { ctrl, 0xae };
+        write_cmds(buf, sizeof(buf));
     }
 
     // One can specify to draw in Black, White, or current foreground/background
@@ -92,9 +96,10 @@ public:
 
     static constexpr int baud = 400'000;
 
-    // 64 x 128
-    static constexpr int rows = 64;
+    // 32 x 128 or 64 x 128
+    static constexpr int rows = 32;
     static constexpr int cols = 128;
+    static_assert(rows == 32 || rows == 64);
 
 private:
 
@@ -120,20 +125,12 @@ private:
     // LSB of each uint16_t is 8 pixels of image data, MSB is i2c control
     uint16_t _image[pages][cols];
 
-    // ~75 usec at 400 KHz
-    void write_cmd(uint8_t cmd)
+    void write_cmds(uint8_t *buf, int buf_len)
     {
-        constexpr uint8_t ctrl = 0x00;
-        uint8_t xbuf[2] = {ctrl, cmd};
-        _i2c.write_timeout_us(_i2c_addr, xbuf, sizeof(xbuf));
-    }
-
-    // ~100 usec at 400 KHz
-    void write_cmd(uint8_t cmd1, uint8_t cmd2)
-    {
-        constexpr uint8_t ctrl = 0x00;
-        uint8_t xbuf[3] = {ctrl, cmd1, cmd2};
-        _i2c.write_timeout_us(_i2c_addr, xbuf, sizeof(xbuf));
+        // NOTE: the first byte is reserved for the SSD1306 control byte
+        assert(buf_len >= 2);
+        assert(buf[0] == 0x00); // Co=0, D/C=0
+        _i2c.write_timeout_us(_i2c_addr, buf, buf_len);
     }
 
     int color_to_bit(Color color)
@@ -153,5 +150,36 @@ private:
     void set(int col, int row, int bit);
 
     int putc_tl(int col, int row, char ch, int bit);
+
+    // command bytes, from pico-examples
+    static constexpr uint8_t set_mem_mode = 0x20;
+    static constexpr uint8_t set_col_addr = 0x21;
+    static constexpr uint8_t set_page_addr = 0x22;
+    static constexpr uint8_t set_horiz_scroll = 0x26;
+    static constexpr uint8_t set_scroll = 0x2e;
+
+    static constexpr uint8_t set_disp_start_line = 0x40;
+
+    static constexpr uint8_t set_contrast = 0x81;
+    static constexpr uint8_t set_charge_pump = 0x8d;
+
+    static constexpr uint8_t set_seg_remap = 0xa0;
+    static constexpr uint8_t set_entire_on = 0xa4;
+    static constexpr uint8_t set_all_on = 0xa5;
+    static constexpr uint8_t set_norm_disp = 0xa6;
+    static constexpr uint8_t set_inv_disp = 0xa7;
+    static constexpr uint8_t set_mux_ratio = 0xa8;
+    static constexpr uint8_t set_disp = 0xae;
+    static constexpr uint8_t set_com_out_dir = 0xc0;
+    static constexpr uint8_t set_com_out_dir_flip = 0xc0;
+
+    static constexpr uint8_t set_disp_offset = 0xd3;
+    static constexpr uint8_t set_disp_clk_div = 0xd5;
+    static constexpr uint8_t set_precharge = 0xd9;
+    static constexpr uint8_t set_com_pin_cfg = 0xda;
+    static constexpr uint8_t set_vcom_desel = 0xdb;
+
+    static constexpr uint8_t write_mode = 0xfe;
+    static constexpr uint8_t read_mode = 0xff;
 
 }; // class Oled

@@ -16,6 +16,7 @@ void Oled::init()
 {
     clear();
     off();                 // display off
+#if 0 // what does this work for? 128x64?
     write_cmd(0x20, 0x00); // horizontal addressing mode
     write_cmd(0xa8, 0x3f); // mux ratio 64
     write_cmd(0x8d, 0x14); // charge pump enabled
@@ -23,6 +24,37 @@ void Oled::init()
     write_cmd(0xa1);       // flip horizontally
     write_cmd(0xda, 0x12); // alt com pins, no l/r remap
     write_cmd(0xd9, 0xf1); // precharge periods
+#else
+    // from pico-examples
+    // works with adafruit 128x32
+    uint8_t cmds[] = {
+        // clang-format off
+        0x00,                       // ssd1306 control byte
+        set_disp,                   // set display off
+        // memory mapping
+        set_mem_mode, 0x00,         // set memory address mode 0 = hor, 1 = ver, 2 = page
+        // resolution and layout
+        set_disp_start_line,        // set display start line to 0
+        set_seg_remap | 0x01,       // set segment re-map, column address 127 is mapped to SEG0
+        set_mux_ratio, rows - 1,    // set multiplex ratio
+        set_com_out_dir | 0x08,     // set COM (common) output scan direction
+        set_disp_offset, 0x00,      // set display offset
+        set_com_pin_cfg,            // set COM (common) pins hardware configuration (magic)
+        rows == 32 ? 0x02 : 0x12,   // 0x02 for 128x32, 0x12 for 128x64
+        // timing and driving scheme
+        set_disp_clk_div, 0x80,     // set display clock divide ratio
+        set_precharge, 0xf1,        // set pre-charge period (Vcc internally generated on our board)
+        set_vcom_desel, 0x30,       // set VCOMH deselect level (0.83xVcc)
+        // display
+        set_contrast, 0xff,         // set contrast control
+        set_entire_on,              // set entire display on to follow RAM content
+        set_norm_disp,              // set normal (not inverted) display
+        set_charge_pump, 0x14,      // set charge pump
+        set_scroll | 0x00,          // deactivate horizontal scrolling if set
+        // clang-format on
+    };
+    write_cmds(cmds, sizeof(cmds));
+#endif
 }
 
 
