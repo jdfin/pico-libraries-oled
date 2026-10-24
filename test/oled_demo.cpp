@@ -37,6 +37,15 @@ static void do_chars1a(Oled &oled);
 static void do_chars1b(Oled &oled);
 static void do_chars2a(Oled &oled);
 static void do_chars2b(Oled &oled);
+static void do_double(Oled &oled, const char *s);
+static void do_hello_2x(Oled &oled);
+static void do_chars1a_2x(Oled &oled);
+static void do_chars1b_2x(Oled &oled);
+static void do_chars2a_2x(Oled &oled);
+static void do_chars2b_2x(Oled &oled);
+static void do_chars2c_2x(Oled &oled);
+static void do_chars2d_2x(Oled &oled);
+static void do_chars2e_2x(Oled &oled);
 
 static const Font *font = &chicago_12;
 
@@ -45,13 +54,21 @@ static struct {
     void (*func)(Oled &oled);
 } demo[] = {
     {"hello", do_hello},           //
-    {"fullscreen", do_fullscreen}, //
-    {"dots", do_dots},             //
-    {"stripes", do_stripes},       //
-    {"chars1a", do_chars1a},       //
-    {"chars1b", do_chars1b},       //
-    {"chars2a", do_chars2a},       //
-    {"chars2b", do_chars2b},       //
+//  {"fullscreen", do_fullscreen}, //
+//  {"dots", do_dots},             //
+//  {"stripes", do_stripes},       //
+//  {"chars1a", do_chars1a},       //
+//  {"chars1b", do_chars1b},       //
+//  {"chars2a", do_chars2a},       //
+//  {"chars2b", do_chars2b},       //
+    {"hello_2x", do_hello_2x},     //
+    {"chars1a_2x", do_chars1a_2x}, //
+    {"chars1b_2x", do_chars1b_2x}, //
+    {"chars2a_2x", do_chars2a_2x}, //
+    {"chars2b_2x", do_chars2b_2x}, //
+    {"chars2c_2x", do_chars2c_2x}, //
+    {"chars2d_2x", do_chars2d_2x}, //
+    {"chars2e_2x", do_chars2e_2x}, //
 };
 static constexpr int demo_max = sizeof(demo) / sizeof(demo[0]);
 
@@ -344,5 +361,72 @@ static void do_chars2b(Oled &oled)
     oled.set_align(Oled::HAlign::Center, Oled::VAlign::Center);
     oled.puts(Oled::cols / 2, Oled::rows / 2, msg);
 }
+
+
+static void do_double(Oled &oled, const char *s)
+{
+    // One line of double-size text:
+    //
+    // +--------------------+
+    // |                    |
+    // |      <string>      |
+    // |                    |
+    // +--------------------+
+
+    oled.set_font(font);
+    oled.set_double(true);
+    oled.set_align(Oled::HAlign::Center, Oled::VAlign::Center);
+    oled.puts(Oled::cols / 2, Oled::rows / 2, s);
+    oled.set_double(false);
+}
+
+
+static void do_hello_2x(Oled &oled)
+{
+    do_double(oled, "Hello!");
+}
+
+
+static void do_chars1a_2x(Oled &oled)
+{
+    do_double(oled, "ABCDEFGH");
+}
+
+
+static void do_chars1b_2x(Oled &oled)
+{
+    do_double(oled, "abcdefgh");
+}
+
+
+static void do_chars2a_2x(Oled &oled)
+{
+    do_double(oled, "%&()+-*/");
+}
+
+
+static void do_chars2b_2x(Oled &oled)
+{
+    do_double(oled, "<=>?@[]^_");
+}
+
+
+static void do_chars2c_2x(Oled &oled)
+{
+    do_double(oled, "4,321.0");
+}
+
+
+static void do_chars2d_2x(Oled &oled)
+{
+    do_double(oled, "9,876.5");
+}
+
+
+static void do_chars2e_2x(Oled &oled)
+{
+    do_double(oled, "3.792 mV");
+}
+
 
 #pragma GCC diagnostic pop

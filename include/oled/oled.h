@@ -22,7 +22,8 @@ public:
         _font(font),
         _h_align(HAlign::Left),
         _v_align(VAlign::Top),
-        _fg(Color::White)
+        _fg(Color::White),
+        _scale(1)
     {
     }
 
@@ -75,6 +76,15 @@ public:
         _font = font;
     }
 
+    // true: draw text at double size using the current font (metrics,
+    // alignment, and returned widths are all doubled).
+    // Diagonals are smoothed (scale2x with a diagonal check); compile
+    // oled.cpp with -DOLED_DOUBLE_SIMPLE=1 for plain 2x2 pixel doubling.
+    void set_double(bool on)
+    {
+        _scale = on ? 2 : 1;
+    }
+
     enum class HAlign { Left, Center, Right };
     enum class VAlign { Top, Center, Bottom };
 
@@ -122,6 +132,9 @@ private:
     // foreground color; background is implied
     Color _fg;
 
+    // text scale: 1 = font as is, 2 = doubled
+    int _scale;
+
     // LSB of each uint16_t is 8 pixels of image data, MSB is i2c control
     uint16_t _image[pages][cols];
 
@@ -148,6 +161,17 @@ private:
     }
 
     void set(int col, int row, int bit);
+
+    // character width and line height in pixels, including _scale
+    int char_width(char ch) const
+    {
+        return _font->width(ch) * _scale;
+    }
+
+    int line_height() const
+    {
+        return _font->height() * _scale;
+    }
 
     int putc_tl(int col, int row, char ch, int bit);
 

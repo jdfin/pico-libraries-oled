@@ -94,15 +94,15 @@ int Oled::putc(int col, int row, char ch, Color color)
 
     // adjust vertical position if not top aligned
     if (_v_align == VAlign::Center)
-        row -= _font->height() / 2;
+        row -= line_height() / 2;
     else if (_v_align == VAlign::Bottom)
-        row -= _font->height();
+        row -= line_height();
 
     // adjust horizontal position if not left aligned
     if (_h_align == HAlign::Center)
-        col -= _font->width(ch) / 2;
+        col -= char_width(ch) / 2;
     else if (_h_align == HAlign::Right)
-        col -= _font->width(ch);
+        col -= char_width(ch);
 
     return putc_tl(col, row, ch, color_to_bit(color));
 }
@@ -121,9 +121,9 @@ void Oled::puts(int col, int row, const char *str, Color color)
 
     // adjust vertical position if not top aligned
     if (_v_align == VAlign::Center)
-        row -= (lines * _font->height()) / 2;
+        row -= (lines * line_height()) / 2;
     else if (_v_align == VAlign::Bottom)
-        row -= (lines * _font->height());
+        row -= (lines * line_height());
 
     int bit = color_to_bit(color);
 
@@ -133,7 +133,7 @@ void Oled::puts(int col, int row, const char *str, Color color)
         // width of next line to print
         int wid = 0;
         for (const char *s = str; *s != '\0' && *s != '\n'; s++)
-            wid += _font->width(*s);
+            wid += char_width(*s);
 
         // adjust horizontal position if not left aligned
         int col0 = col;
@@ -148,7 +148,7 @@ void Oled::puts(int col, int row, const char *str, Color color)
         if (*str == '\n')
             str++;
 
-        row += _font->height();
+        row += line_height();
         lines--;
     }
 }
@@ -187,9 +187,25 @@ void Oled::set(int col, int row, int bit)
 }
 
 
+// Double-size text: by default diagonals are smoothed; compile with
+// -DOLED_DOUBLE_SIMPLE=1 for plain 2x2 pixel doubling instead.
+#ifndef OLED_DOUBLE_SIMPLE
+#define OLED_DOUBLE_SIMPLE 0
+#endif
+
+
+// Glyph pixel at (r, c); anything outside the glyph cell is background.
+static bool glyph_px(const uint16_t *pix, int wid, int rows, int r, int c)
+{
+    if (r < 0 || r >= rows || c < 0 || c >= wid)
+        return false;
+    return (pix[r] & (1 << (wid - c - 1))) != 0;
+}
+
+
 // Draw character, always top-left aligned.
 // Black/White/Foreground/Background has already been mapped to 0 or 1.
-// Return width of character.
+// Return width of character (doubled if _scale is 2).
 int Oled::putc_tl(int col, int row, char ch, int bit)
 {
     assert(bit == 0 || bit == 1);
@@ -197,13 +213,69 @@ int Oled::putc_tl(int col, int row, char ch, int bit)
     const uint16_t *pix = _font->pixel_data(ch);
     assert(pix != nullptr);
     int wid = _font->width(ch);
-    for (int r = 0; r < _font->char_rows(); r++) {
+    int rows = _font->char_rows();
+
+    if (_scale == 1) {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < wid; c++) {
+                if (glyph_px(pix, wid, rows, r, c))
+                    set(col + c, row + r, bit);
+                else
+                    set(col + c, row + r, 1 - bit);
+            }
+        }
+        return wid;
+    }
+
+#if OLED_DOUBLE_SIMPLE
+    // plain doubling: each source pixel becomes a 2x2 block
+    for (int r = 0; r < rows; r++) {
         for (int c = 0; c < wid; c++) {
-            if ((pix[r] & (1 << (wid - c - 1))) != 0)
-                set(col + c, row + r, bit);
-            else
-                set(col + c, row + r, 1 - bit);
+            int v = glyph_px(pix, wid, rows, r, c) ? bit : 1 - bit;
+            set(col + 2 * c, row + 2 * r, v);
+            set(col + 2 * c + 1, row + 2 * r, v);
+            set(col + 2 * c, row + 2 * r + 1, v);
+            set(col + 2 * c + 1, row + 2 * r + 1, v);
         }
     }
-    return wid;
+#else
+    // Each source pixel P becomes a 2x2 block (P1 P2 / P3 P4), using scale2x
+    // with an added diagonal check.
+    //
+    //   UL  A  UR       P1 P2
+    //    C  P  B        P3 P4
+    //   DL  D  DR
+    //
+    // Plain scale2x rounds any corner where two adjacent neighbors match and
+    // differ from the other two, which also clips the square ends of strokes
+    // (e.g. 'l' and 'H' in Chicago 12) and fills concave joins. Here a
+    // sub-pixel is only changed if the edge really continues diagonally: the
+    // two diagonal neighbors along the edge must match the far-side neighbors.
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < wid; c++) {
+            bool p = glyph_px(pix, wid, rows, r, c);
+            bool a = glyph_px(pix, wid, rows, r - 1, c);
+            bool b = glyph_px(pix, wid, rows, r, c + 1);
+            bool cc = glyph_px(pix, wid, rows, r, c - 1);
+            bool d = glyph_px(pix, wid, rows, r + 1, c);
+            bool ul = glyph_px(pix, wid, rows, r - 1, c - 1);
+            bool ur = glyph_px(pix, wid, rows, r - 1, c + 1);
+            bool dl = glyph_px(pix, wid, rows, r + 1, c - 1);
+            bool dr = glyph_px(pix, wid, rows, r + 1, c + 1);
+
+            bool p1 = (cc == a && cc != d && a != b && ur == b && dl == d) ? a : p;
+            bool p2 = (a == b && a != cc && b != d && ul == cc && dr == d) ? b : p;
+            bool p3 = (d == cc && d != b && cc != a && ul == a && dr == b) ? cc : p;
+            bool p4 = (b == d && b != a && d != cc && ur == a && dl == cc) ? d : p;
+
+            int x = col + 2 * c;
+            int y = row + 2 * r;
+            set(x, y, p1 ? bit : 1 - bit);
+            set(x + 1, y, p2 ? bit : 1 - bit);
+            set(x, y + 1, p3 ? bit : 1 - bit);
+            set(x + 1, y + 1, p4 ? bit : 1 - bit);
+        }
+    }
+#endif
+    return 2 * wid;
 }
