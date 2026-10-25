@@ -29,6 +29,7 @@ static constexpr int scl_gpio = 17;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+static void do_box(Oled &oled);
 static void do_hello(Oled &oled);
 static void do_fullscreen(Oled &oled);
 static void do_dots(Oled &oled);
@@ -39,13 +40,8 @@ static void do_chars2a(Oled &oled);
 static void do_chars2b(Oled &oled);
 static void do_double(Oled &oled, const char *s);
 static void do_hello_2x(Oled &oled);
-static void do_chars1a_2x(Oled &oled);
-static void do_chars1b_2x(Oled &oled);
-static void do_chars2a_2x(Oled &oled);
-static void do_chars2b_2x(Oled &oled);
-static void do_chars2c_2x(Oled &oled);
-static void do_chars2d_2x(Oled &oled);
-static void do_chars2e_2x(Oled &oled);
+static void do_chars_2x(Oled &oled);
+static void do_msg_2x(Oled &oled);
 
 static const Font *font = &chicago_12;
 
@@ -54,21 +50,16 @@ static struct {
     void (*func)(Oled &oled);
 } demo[] = {
     {"hello", do_hello},           //
-//  {"fullscreen", do_fullscreen}, //
-//  {"dots", do_dots},             //
-//  {"stripes", do_stripes},       //
-//  {"chars1a", do_chars1a},       //
-//  {"chars1b", do_chars1b},       //
-//  {"chars2a", do_chars2a},       //
-//  {"chars2b", do_chars2b},       //
+    {"fullscreen", do_fullscreen}, //
+    {"dots", do_dots},             //
+    {"stripes", do_stripes},       //
+    {"chars1a", do_chars1a},       //
+    {"chars1b", do_chars1b},       //
+    {"chars2a", do_chars2a},       //
+    {"chars2b", do_chars2b},       //
     {"hello_2x", do_hello_2x},     //
-    {"chars1a_2x", do_chars1a_2x}, //
-    {"chars1b_2x", do_chars1b_2x}, //
-    {"chars2a_2x", do_chars2a_2x}, //
-    {"chars2b_2x", do_chars2b_2x}, //
-    {"chars2c_2x", do_chars2c_2x}, //
-    {"chars2d_2x", do_chars2d_2x}, //
-    {"chars2e_2x", do_chars2e_2x}, //
+    {"chars1_2x", do_chars_2x},    //
+    {"chars5_2x", do_msg_2x},      //
 };
 static constexpr int demo_max = sizeof(demo) / sizeof(demo[0]);
 
@@ -101,7 +92,7 @@ int main()
     while (true) {
         run_demo(demo_num);
         demo_num = (demo_num + 1) % demo_max;
-        sleep_ms(5000);
+        sleep_ms(3000);
     }
 
     return 0;
@@ -146,6 +137,20 @@ static void run_demo(int demo_num)
 } // void run_demo()
 
 
+static void do_box(Oled &oled)
+{
+    // box in outermost pixels
+    for (int col = 0; col < oled.cols; col++) {
+        oled.set(col, 0);
+        oled.set(col, oled.rows - 1);
+    }
+    for (int row = 0; row < oled.rows; row++) {
+        oled.set(0, row);
+        oled.set(oled.cols - 1, row);
+    }
+}
+
+
 static void do_hello(Oled &oled)
 {
     // Say hi:
@@ -158,22 +163,14 @@ static void do_hello(Oled &oled)
     // |********************************|
     // +--------------------------------+
 
-    // box
-    for (int col = 0; col < oled.cols; col++) {
-        oled.set(col, 0);
-        oled.set(col, oled.rows - 1);
-    }
-    for (int row = 0; row < oled.rows; row++) {
-        oled.set(0, row);
-        oled.set(oled.cols - 1, row);
-    }
-
     oled.set_align(Oled::HAlign::Center, Oled::VAlign::Center);
     oled.set_font(font);
 
     const char *msg = "Hello, World!";
 
     oled.puts(oled.cols / 2, oled.rows / 2, msg);
+
+    do_box(oled);
 }
 
 
@@ -384,48 +381,53 @@ static void do_double(Oled &oled, const char *s)
 static void do_hello_2x(Oled &oled)
 {
     do_double(oled, "Hello!");
+    do_box(oled);
 }
 
 
-static void do_chars1a_2x(Oled &oled)
+static void do_range_2x(Oled &oled, char first, char last, char& next)
 {
-    do_double(oled, "ABCDEFGH");
+    char msg[32];
+    int i = 0;
+    msg[i] = '\0';
+    int msg_wid = 0;
+    while (true) {
+        // does next character fit?
+        const int next_wid = font->width(next) * 2;
+        if (next_wid == 0) {
+            // no character whith this code
+            if (next == last)
+                next = first;
+            else
+                next++;
+        } else if ((msg_wid + next_wid) <= oled.cols) {
+            // there's something there and it fits
+            msg[i++] = next;
+            msg[i] = '\0';
+            msg_wid += next_wid;
+            if (next == last)
+                next = first;
+            else
+                next++;
+        } else {
+            // doesn't fit
+            break;
+        }
+    }
+    do_double(oled, msg);
 }
 
 
-static void do_chars1b_2x(Oled &oled)
+static void do_chars_2x(Oled &oled)
 {
-    do_double(oled, "abcdefgh");
+    static char next = 0x00;
+    do_range_2x(oled, 0x00, 0x7f, next);
 }
 
 
-static void do_chars2a_2x(Oled &oled)
+static void do_msg_2x(Oled &oled)
 {
-    do_double(oled, "%&()+-*/");
-}
-
-
-static void do_chars2b_2x(Oled &oled)
-{
-    do_double(oled, "<=>?@[]^_");
-}
-
-
-static void do_chars2c_2x(Oled &oled)
-{
-    do_double(oled, "4,321.0");
-}
-
-
-static void do_chars2d_2x(Oled &oled)
-{
-    do_double(oled, "9,876.5");
-}
-
-
-static void do_chars2e_2x(Oled &oled)
-{
-    do_double(oled, "3.792 mV");
+    do_double(oled, "3.792 V");
 }
 
 
