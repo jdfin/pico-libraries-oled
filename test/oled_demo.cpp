@@ -88,6 +88,13 @@ int main()
            font->pixel_data('A'), mem_name(font->pixel_data('A')));
     printf("\n");
 
+    // Wait until power has been up long enough.
+    // The OLED init fails if it is done too soon after powerup.
+    constexpr uint32_t oled_delay_us = 50'000;
+    uint32_t since_boot_us = time_us_32();
+    if (since_boot_us < oled_delay_us)
+        sleep_us(oled_delay_us - since_boot_us);
+
     int demo_num = 0;
     while (true) {
         run_demo(demo_num);
